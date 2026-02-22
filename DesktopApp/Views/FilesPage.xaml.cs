@@ -199,21 +199,58 @@ namespace DesktopApp.Views
             if (_vm?.SelectedProject == null) return;
 
             var clipboard = Clipboard.GetContent();
-            if (!clipboard.Contains(StandardDataFormats.Bitmap)) return;
-
-            var bitmapRef = await clipboard.GetBitmapAsync();
-            using var stream = await bitmapRef.OpenReadAsync();
-            var bytes = new byte[stream.Size];
-            await stream.ReadAsync(bytes.AsBuffer(), (uint)stream.Size,
-                Windows.Storage.Streams.InputStreamOptions.None);
-
-            var fileName = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.png";
-            var attachment = await _fileService.SaveBytesAsync(bytes, fileName, AttachmentScope.Project);
-            if (attachment != null)
+            if (!clipboard.Contains(StandardDataFormats.Bitmap))
             {
+                var dialog = new ContentDialog
+                {
+                    Title = "No screenshot found",
+                    Content = "Copy an image to your clipboard first (e.g. Win+Shift+S)",
+                    CloseButtonText = "OK",
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+                return;
+            }
+
+            try
+            {
+                var bitmapRef = await clipboard.GetBitmapAsync();
+                using var stream = await bitmapRef.OpenReadAsync();
+
+                // Save as BMP first then let Windows handle it
+                var fileName = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.bmp";
+                var destPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "DesktopApp", "Files", fileName);
+
+                Directory.CreateDirectory(Path.GetDirectoryName(destPath)!);
+
+                using var fileStream = File.Create(destPath);
+                await stream.AsStreamForRead().CopyToAsync(fileStream);
+
+                var attachment = new FileAttachment
+                {
+                    FileName = fileName,
+                    FilePath = destPath,
+                    MimeType = "image/bmp",
+                    FileSizeBytes = new FileInfo(destPath).Length,
+                    Scope = AttachmentScope.Project
+                };
+
                 _vm.SelectedProject.Attachments.Add(attachment);
                 await _vm.SaveAsync();
                 RefreshFiles();
+            }
+            catch (Exception ex)
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "Paste failed",
+                    Content = ex.Message,
+                    CloseButtonText = "OK",
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
             }
         }
 
