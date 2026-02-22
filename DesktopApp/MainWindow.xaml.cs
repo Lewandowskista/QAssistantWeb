@@ -130,11 +130,30 @@ namespace DesktopApp
 
         private void ProjectList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            if (ProjectList.ItemsSource == null) return;
             if (ProjectList.SelectedItem is Project p)
             {
                 ViewModel.SelectedProject = p;
                 NavigateToCurrentTab();
             }
+        }
+
+        private async void ProjectList_DragItemsCompleted(object sender, DragItemsCompletedEventArgs e)
+        {
+            // Rebuild the projects list from the current ListView order
+            var reordered = ProjectList.Items.OfType<Project>().ToList();
+
+            // Update without clearing first to avoid selection issues
+            for (int i = 0; i < reordered.Count; i++)
+            {
+                var existing = ViewModel.Projects.IndexOf(reordered[i]);
+                if (existing != i)
+                {
+                    ViewModel.Projects.Move(existing, i);
+                }
+            }
+
+            await ViewModel.SaveAsync();
         }
 
         private async void ProjectList_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)

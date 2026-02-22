@@ -1,9 +1,10 @@
-using System;
 using DesktopApp.Models;
 using DesktopApp.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using System;
+using System.Linq;
 
 namespace DesktopApp.Views
 {
@@ -93,6 +94,20 @@ namespace DesktopApp.Views
             await _vm.SaveAsync();
             RefreshNotes();
             NotesList.SelectedItem = note;
+        }
+
+        private async void NotesList_DragItemsCompleted(object sender, DragItemsCompletedEventArgs e)
+        {
+            if (_vm?.SelectedProject == null) return;
+            var reordered = NotesList.Items.OfType<Note>().ToList();
+            _vm.SelectedProject.Notes.Clear();
+            foreach (var note in reordered)
+                _vm.SelectedProject.Notes.Add(note);
+            await _vm.SaveAsync();
+
+            // Rebind to reflect new order
+            NotesList.ItemsSource = null;
+            NotesList.ItemsSource = _vm.SelectedProject.Notes;
         }
 
         private async void DeleteNote_Click(object sender, RoutedEventArgs e)

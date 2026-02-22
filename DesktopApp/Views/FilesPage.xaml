@@ -61,6 +61,10 @@
 
                 <!-- Files list -->
                 <ListView x:Name="FilesList"
+                          CanReorderItems="True"
+CanDragItems="True"
+AllowDrop="True"
+DragItemsCompleted="FilesList_DragItemsCompleted"
                           Background="Transparent"
                           SelectionMode="None">
                     <ListView.ItemContainerStyle>

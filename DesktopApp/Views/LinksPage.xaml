@@ -26,6 +26,10 @@
                            Margin="16,16,16,8" CharacterSpacing="150"/>
 
                 <ListView Grid.Row="1" x:Name="LinksList"
+                          CanReorderItems="True"
+CanDragItems="True"
+AllowDrop="True"
+DragItemsCompleted="LinksList_DragItemsCompleted"
                           Background="Transparent" SelectionMode="Single"
                           SelectionChanged="LinksList_SelectionChanged">
                     <ListView.ItemContainerStyle>

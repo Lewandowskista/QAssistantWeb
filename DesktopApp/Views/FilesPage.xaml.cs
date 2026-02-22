@@ -217,7 +217,6 @@ namespace DesktopApp.Views
                 var bitmapRef = await clipboard.GetBitmapAsync();
                 using var stream = await bitmapRef.OpenReadAsync();
 
-                // Save as BMP first then let Windows handle it
                 var fileName = $"screenshot_{DateTime.Now:yyyyMMdd_HHmmss}.bmp";
                 var destPath = Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
@@ -261,7 +260,6 @@ namespace DesktopApp.Views
             e.DragUIOverride.IsGlyphVisible = true;
         }
 
-
         private void Page_DragLeave(object sender, DragEventArgs e)
         {
             e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
@@ -293,6 +291,16 @@ namespace DesktopApp.Views
             {
                 deferral.Complete();
             }
+        }
+
+        private async void FilesList_DragItemsCompleted(object sender, DragItemsCompletedEventArgs e)
+        {
+            if (_vm?.SelectedProject == null) return;
+            var reordered = FilesList.Items.OfType<FileAttachment>().ToList();
+            _vm.SelectedProject.Attachments.Clear();
+            foreach (var file in reordered)
+                _vm.SelectedProject.Attachments.Add(file);
+            await _vm.SaveAsync();
         }
     }
 }

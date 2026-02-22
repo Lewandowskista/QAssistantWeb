@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using DesktopApp.Models;
 using DesktopApp.ViewModels;
 using Microsoft.UI;
@@ -8,6 +5,10 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Navigation;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace DesktopApp.Views
 {
@@ -41,13 +42,27 @@ namespace DesktopApp.Views
 
         private async void LinksList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (LinksList.SelectedItem is EmbedLink link && !string.IsNullOrEmpty(link.Url))
-            {
-                EmptyState.Visibility = Visibility.Collapsed;
-                WebViewContainer.Visibility = Visibility.Visible;
-                await InitializeWebViewAsync();
-                EmbedWebView.CoreWebView2.Navigate(link.Url);
-            }
+            if (LinksList.SelectedItem is not EmbedLink link) return;
+
+            WebViewContainer.Visibility = Visibility.Visible;
+            EmptyState.Visibility = Visibility.Collapsed;
+
+            await InitializeWebViewAsync();
+            EmbedWebView.Source = new Uri(link.Url);
+        }
+
+        private async void LinksList_DragItemsCompleted(object sender, DragItemsCompletedEventArgs e)
+        {
+            if (_vm?.SelectedProject == null) return;
+            var reordered = LinksList.Items.OfType<EmbedLink>().ToList();
+            _vm.SelectedProject.Links.Clear();
+            foreach (var l in reordered)
+                _vm.SelectedProject.Links.Add(l);
+            await _vm.SaveAsync();
+
+            // Rebind to reflect new order
+            LinksList.ItemsSource = null;
+            LinksList.ItemsSource = _vm.SelectedProject.Links;
         }
 
         private async Task InitializeWebViewAsync()
@@ -68,7 +83,7 @@ namespace DesktopApp.Views
             EmbedWebView.CoreWebView2.Settings.IsWebMessageEnabled = true;
 
             EmbedWebView.CoreWebView2.AddWebResourceRequestedFilter("*",
-     Microsoft.Web.WebView2.Core.CoreWebView2WebResourceContext.All);
+                Microsoft.Web.WebView2.Core.CoreWebView2WebResourceContext.All);
             EmbedWebView.CoreWebView2.WebResourceRequested += (s, args) =>
             {
                 args.Request.Headers.SetHeader("Upgrade-Insecure-Requests", "1");

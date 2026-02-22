@@ -25,6 +25,10 @@
                            Margin="16,16,16,8" CharacterSpacing="150"/>
 
                 <ListView Grid.Row="1" x:Name="NotesList"
+                          CanReorderItems="True"
+                          CanDragItems="True"
+                          AllowDrop="True"
+                          DragItemsCompleted="NotesList_DragItemsCompleted"
                           Background="Transparent" SelectionMode="Single"
                           SelectionChanged="NotesList_SelectionChanged">
                     <ListView.ItemContainerStyle>
