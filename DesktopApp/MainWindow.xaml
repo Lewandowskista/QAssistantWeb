@@ -19,7 +19,7 @@
         <Border Grid.Row="0" Grid.ColumnSpan="2"
         Background="#13131A"
         BorderBrush="#2A2A3A" BorderThickness="0,0,0,1">
-            <Grid Padding="16,0">
+            <Grid Padding="16,0" Height="48">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -37,51 +37,77 @@
                 <Border Grid.Column="1" Background="Transparent" x:Name="DragRegion"/>
 
                 <!-- Right controls -->
-                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"
-                    VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Horizontal"
+                    VerticalAlignment="Center" Spacing="0">
 
                     <!-- Pin toggle -->
-                    <CheckBox x:Name="PinToggle"
-                      IsChecked="True"
-                      Content="Pin"
-                      Foreground="#6B7280"
-                      FontSize="12"
-                      Checked="PinToggle_Checked"
-                      Unchecked="PinToggle_Unchecked"
-                      Margin="0,0,8,0"/>
+                    <ToggleButton x:Name="PinToggle"
+              IsChecked="True"
+              Checked="PinToggle_Checked"
+              Unchecked="PinToggle_Unchecked"
+              Width="64" Height="32"
+              CornerRadius="6"
+              Margin="0,0,8,0"
+              Padding="0"
+              Background="#A78BFA"
+              BorderThickness="0">
+                        <TextBlock Text="Pin" FontSize="12"
+               FontWeight="SemiBold"
+               Foreground="White"
+               VerticalAlignment="Center"
+               HorizontalAlignment="Center"/>
+                    </ToggleButton>
 
                     <!-- Minimize -->
                     <Button x:Name="MinimizeBtn"
-                    Content="&#x2212;"
-                    Click="MinimizeBtn_Click"
-                    Width="32" Height="32"
-                    Background="Transparent"
-                    Foreground="#6B7280"
-                    CornerRadius="6"
-                    Padding="0"
-                    FontSize="14"/>
+        Click="MinimizeBtn_Click"
+        Width="32" Height="32"
+        CornerRadius="6"
+        Background="Transparent"
+        BorderThickness="0"
+        Padding="0"
+        VerticalAlignment="Center">
+                        <TextBlock Text="&#xE921;" 
+               FontFamily="Segoe Fluent Icons"
+               FontSize="12"
+               Foreground="#A78BFA"
+               VerticalAlignment="Center"
+               HorizontalAlignment="Center"/>
+                    </Button>
 
                     <!-- Maximize -->
                     <Button x:Name="MaximizeBtn"
-                    Content="&#x25A1;"
-                    Click="MaximizeBtn_Click"
-                    Width="32" Height="32"
-                    Background="Transparent"
-                    Foreground="#6B7280"
-                    CornerRadius="6"
-                    Padding="0"
-                    FontSize="14"/>
+        Click="MaximizeBtn_Click"
+        Width="32" Height="32"
+        CornerRadius="6"
+        Background="Transparent"
+        BorderThickness="0"
+        Padding="0"
+        VerticalAlignment="Center">
+                        <TextBlock Text="&#xE922;" 
+               FontFamily="Segoe Fluent Icons"
+               FontSize="12"
+               Foreground="#A78BFA"
+               VerticalAlignment="Center"
+               HorizontalAlignment="Center"/>
+                    </Button>
 
                     <!-- Close -->
                     <Button x:Name="CloseBtn"
-                    Content="&#x2715;"
-                    Click="CloseBtn_Click"
-                    Width="32" Height="32"
-                    Background="Transparent"
-                    Foreground="#6B7280"
-                    CornerRadius="6"
-                    Padding="0"
-                    FontSize="14"/>
+        Click="CloseBtn_Click"
+        Width="32" Height="32"
+        CornerRadius="6"
+        Background="Transparent"
+        BorderThickness="0"
+        Padding="0"
+        VerticalAlignment="Center">
+                        <TextBlock Text="&#xE8BB;" 
+               FontFamily="Segoe Fluent Icons"
+               FontSize="12"
+               Foreground="#A78BFA"
+               VerticalAlignment="Center"
+               HorizontalAlignment="Center"/>
+                    </Button>
                 </StackPanel>
             </Grid>
         </Border>
