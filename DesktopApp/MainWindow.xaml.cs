@@ -23,6 +23,11 @@ namespace DesktopApp
             this.InitializeComponent();
             SetupWindow();
             LoadDataAsync();
+            this.Closed += (s, e) =>
+            {
+                e.Handled = true;
+                App.HideMainWindow();
+            };
         }
 
         private async void LoadDataAsync()
@@ -31,7 +36,7 @@ namespace DesktopApp
             RefreshProjectList();
         }
 
-        // ── Window setup ────────────────────────────────────────────
+        // ── Window setup ─────────────────────────────────────────────
         private void SetupWindow()
         {
             var hwnd = WindowNative.GetWindowHandle(this);
@@ -43,7 +48,6 @@ namespace DesktopApp
             _appWindow.Resize(new Windows.Graphics.SizeInt32(1200, 780));
             _appWindow.Move(new Windows.Graphics.PointInt32(100, 100));
 
-            // Use compact overlay presenter to hide all default buttons
             var presenter = OverlappedPresenter.Create();
             presenter.SetBorderAndTitleBar(true, false);
             presenter.IsResizable = true;
@@ -79,83 +83,6 @@ namespace DesktopApp
                 presenter.IsAlwaysOnTop = onTop;
         }
 
-        private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-        {
-            if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
-
-            var query = sender.Text.Trim().ToLower();
-            if (string.IsNullOrEmpty(query))
-            {
-                sender.ItemsSource = null;
-                return;
-            }
-
-            var results = new List<SearchResult>();
-
-            foreach (var project in ViewModel.Projects)
-            {
-                foreach (var note in project.Notes)
-                {
-                    if (note.Title.ToLower().Contains(query) || note.Content.ToLower().Contains(query))
-                    {
-                        results.Add(new SearchResult
-                        {
-                            Title = note.Title,
-                            Subtitle = note.Content.Length > 60 ? note.Content[..60] + "..." : note.Content,
-                            ProjectName = project.Name,
-                            Type = SearchResultType.Note,
-                            Item = note,
-                            Project = project
-                        });
-                    }
-                }
-
-                foreach (var task in project.Tasks)
-                {
-                    if (task.Title.ToLower().Contains(query) || task.Description.ToLower().Contains(query))
-                    {
-                        results.Add(new SearchResult
-                        {
-                            Title = task.Title,
-                            Subtitle = $"{task.Status} · {task.Priority}",
-                            ProjectName = project.Name,
-                            Type = SearchResultType.Task,
-                            Item = task,
-                            Project = project
-                        });
-                    }
-                }
-            }
-
-            sender.ItemsSource = results.Count > 0 ? results : null;
-        }
-
-        private void SearchBox_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
-        {
-            if (args.SelectedItem is not SearchResult result) return;
-
-            sender.Text = string.Empty;
-            sender.ItemsSource = null;
-
-            // Switch to the project that contains the result
-            ViewModel.SelectedProject = result.Project;
-            RefreshProjectList();
-
-            // Navigate to the correct tab
-            if (result.Type == SearchResultType.Note)
-            {
-                ViewModel.ActiveTab = "Notes";
-                UpdateTabStyles();
-                ContentFrame.Navigate(typeof(NotesPage), ViewModel);
-            }
-            else if (result.Type == SearchResultType.Task)
-            {
-                ViewModel.ActiveTab = "Tasks";
-                UpdateTabStyles();
-                ContentFrame.Navigate(typeof(TasksPage), ViewModel);
-            }
-        }
-
         private void SetDragRegion()
         {
             if (_appWindow == null) return;
@@ -168,7 +95,7 @@ namespace DesktopApp
             });
         }
 
-        // ── Events ──────────────────────────────────────────────────
+        // ── Events ───────────────────────────────────────────────────
         private void PinToggle_Checked(object sender, RoutedEventArgs e)
         {
             SetAlwaysOnTop(true);
@@ -177,6 +104,28 @@ namespace DesktopApp
         private void PinToggle_Unchecked(object sender, RoutedEventArgs e)
         {
             SetAlwaysOnTop(false);
+        }
+
+        private void MinimizeBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_appWindow?.Presenter is OverlappedPresenter presenter)
+                presenter.Minimize();
+        }
+
+        private void MaximizeBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (_appWindow?.Presenter is OverlappedPresenter presenter)
+            {
+                if (presenter.State == OverlappedPresenterState.Maximized)
+                    presenter.Restore();
+                else
+                    presenter.Maximize();
+            }
+        }
+
+        private void CloseBtn_Click(object sender, RoutedEventArgs e)
+        {
+            App.HideMainWindow();
         }
 
         private void ProjectList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -255,6 +204,81 @@ namespace DesktopApp
             }
         }
 
+        private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        {
+            if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+
+            var query = sender.Text.Trim().ToLower();
+            if (string.IsNullOrEmpty(query))
+            {
+                sender.ItemsSource = null;
+                return;
+            }
+
+            var results = new List<SearchResult>();
+
+            foreach (var project in ViewModel.Projects)
+            {
+                foreach (var note in project.Notes)
+                {
+                    if (note.Title.ToLower().Contains(query) || note.Content.ToLower().Contains(query))
+                    {
+                        results.Add(new SearchResult
+                        {
+                            Title = note.Title,
+                            Subtitle = note.Content.Length > 60 ? note.Content[..60] + "..." : note.Content,
+                            ProjectName = project.Name,
+                            Type = SearchResultType.Note,
+                            Item = note,
+                            Project = project
+                        });
+                    }
+                }
+
+                foreach (var task in project.Tasks)
+                {
+                    if (task.Title.ToLower().Contains(query) || task.Description.ToLower().Contains(query))
+                    {
+                        results.Add(new SearchResult
+                        {
+                            Title = task.Title,
+                            Subtitle = $"{task.Status} · {task.Priority}",
+                            ProjectName = project.Name,
+                            Type = SearchResultType.Task,
+                            Item = task,
+                            Project = project
+                        });
+                    }
+                }
+            }
+
+            sender.ItemsSource = results.Count > 0 ? results : null;
+        }
+
+        private void SearchBox_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+        {
+            if (args.SelectedItem is not SearchResult result) return;
+
+            sender.Text = string.Empty;
+            sender.ItemsSource = null;
+
+            ViewModel.SelectedProject = result.Project;
+            RefreshProjectList();
+
+            if (result.Type == SearchResultType.Note)
+            {
+                ViewModel.ActiveTab = "Notes";
+                UpdateTabStyles();
+                ContentFrame.Navigate(typeof(NotesPage), ViewModel);
+            }
+            else if (result.Type == SearchResultType.Task)
+            {
+                ViewModel.ActiveTab = "Tasks";
+                UpdateTabStyles();
+                ContentFrame.Navigate(typeof(TasksPage), ViewModel);
+            }
+        }
+
         // ── Navigation ───────────────────────────────────────────────
         private void NavigateToCurrentTab()
         {
@@ -293,28 +317,6 @@ namespace DesktopApp
                     ? new SolidColorBrush(Windows.UI.Color.FromArgb(255, 226, 232, 240))
                     : new SolidColorBrush(Windows.UI.Color.FromArgb(255, 107, 114, 128));
             }
-        }
-
-        private void MinimizeBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (_appWindow?.Presenter is OverlappedPresenter presenter)
-                presenter.Minimize();
-        }
-
-        private void MaximizeBtn_Click(object sender, RoutedEventArgs e)
-        {
-            if (_appWindow?.Presenter is OverlappedPresenter presenter)
-            {
-                if (presenter.State == OverlappedPresenterState.Maximized)
-                    presenter.Restore();
-                else
-                    presenter.Maximize();
-            }
-        }
-
-        private void CloseBtn_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
         }
 
         private void RefreshProjectList()
