@@ -149,26 +149,48 @@
 
             <!-- Tab bar -->
             <Border Grid.Row="0" Background="#13131A"
-                    BorderBrush="#2A2A3A" BorderThickness="0,0,0,1"
-                    Padding="12,0">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Button x:Name="TabLinks" Content="Links"
-                            Click="Tab_Click" Tag="Links"
-                            Background="#2D2D3F" Foreground="#E2E8F0"
-                            CornerRadius="8" Padding="14,8" Margin="0,6"/>
-                    <Button x:Name="TabNotes" Content="Notes"
-                            Click="Tab_Click" Tag="Notes"
-                            Background="Transparent" Foreground="#6B7280"
-                            CornerRadius="8" Padding="14,8" Margin="0,6"/>
-                    <Button x:Name="TabTasks" Content="Tasks"
-                            Click="Tab_Click" Tag="Tasks"
-                            Background="Transparent" Foreground="#6B7280"
-                            CornerRadius="8" Padding="14,8" Margin="0,6"/>
-                    <Button x:Name="TabSettings" Content="Settings"
-                            Click="Tab_Click" Tag="Settings"
-                            Background="Transparent" Foreground="#6B7280"
-                            CornerRadius="8" Padding="14,8" Margin="0,6"/>
-                </StackPanel>
+        BorderBrush="#2A2A3A" BorderThickness="0,0,0,1"
+        Padding="12,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Tabs -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4">
+                        <Button x:Name="TabLinks" Content="Links"
+                    Click="Tab_Click" Tag="Links"
+                    Background="#2D2D3F" Foreground="#E2E8F0"
+                    CornerRadius="8" Padding="14,8" Margin="0,6"/>
+                        <Button x:Name="TabNotes" Content="Notes"
+                    Click="Tab_Click" Tag="Notes"
+                    Background="Transparent" Foreground="#6B7280"
+                    CornerRadius="8" Padding="14,8" Margin="0,6"/>
+                        <Button x:Name="TabTasks" Content="Tasks"
+                    Click="Tab_Click" Tag="Tasks"
+                    Background="Transparent" Foreground="#6B7280"
+                    CornerRadius="8" Padding="14,8" Margin="0,6"/>
+                        <Button x:Name="TabFiles" Content="Files"
+                     Click="Tab_Click" Tag="Files"
+                     Background="Transparent" Foreground="#6B7280"
+                     CornerRadius="8" Padding="14,8" Margin="0,6"/>
+                        <Button x:Name="TabSettings" Content="Settings"
+                    Click="Tab_Click" Tag="Settings"
+                    Background="Transparent" Foreground="#6B7280"
+                    CornerRadius="8" Padding="14,8" Margin="0,6"/>
+                    </StackPanel>
+
+                    <!-- Search -->
+                    <AutoSuggestBox Grid.Column="1"
+                        x:Name="SearchBox"
+                        PlaceholderText="Search notes and tasks..."
+                        Width="220"
+                        VerticalAlignment="Center"
+                        Margin="0,6"
+                        TextChanged="SearchBox_TextChanged"
+                        SuggestionChosen="SearchBox_SuggestionChosen"/>
+                </Grid>
             </Border>
 
             <!-- Content frame -->

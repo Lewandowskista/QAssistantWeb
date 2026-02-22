@@ -13,5 +13,6 @@ namespace DesktopApp.Models
         public List<Note> Notes { get; set; } = new();
         public List<ProjectTask> Tasks { get; set; } = new();
         public List<EmbedLink> Links { get; set; } = new();
+        public List<FileAttachment> Attachments { get; set; } = new();
     }
 }

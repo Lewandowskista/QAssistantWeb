@@ -79,6 +79,83 @@ namespace DesktopApp
                 presenter.IsAlwaysOnTop = onTop;
         }
 
+        private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
+        {
+            if (args.Reason != AutoSuggestionBoxTextChangeReason.UserInput) return;
+
+            var query = sender.Text.Trim().ToLower();
+            if (string.IsNullOrEmpty(query))
+            {
+                sender.ItemsSource = null;
+                return;
+            }
+
+            var results = new List<SearchResult>();
+
+            foreach (var project in ViewModel.Projects)
+            {
+                foreach (var note in project.Notes)
+                {
+                    if (note.Title.ToLower().Contains(query) || note.Content.ToLower().Contains(query))
+                    {
+                        results.Add(new SearchResult
+                        {
+                            Title = note.Title,
+                            Subtitle = note.Content.Length > 60 ? note.Content[..60] + "..." : note.Content,
+                            ProjectName = project.Name,
+                            Type = SearchResultType.Note,
+                            Item = note,
+                            Project = project
+                        });
+                    }
+                }
+
+                foreach (var task in project.Tasks)
+                {
+                    if (task.Title.ToLower().Contains(query) || task.Description.ToLower().Contains(query))
+                    {
+                        results.Add(new SearchResult
+                        {
+                            Title = task.Title,
+                            Subtitle = $"{task.Status} · {task.Priority}",
+                            ProjectName = project.Name,
+                            Type = SearchResultType.Task,
+                            Item = task,
+                            Project = project
+                        });
+                    }
+                }
+            }
+
+            sender.ItemsSource = results.Count > 0 ? results : null;
+        }
+
+        private void SearchBox_SuggestionChosen(AutoSuggestBox sender, AutoSuggestBoxSuggestionChosenEventArgs args)
+        {
+            if (args.SelectedItem is not SearchResult result) return;
+
+            sender.Text = string.Empty;
+            sender.ItemsSource = null;
+
+            // Switch to the project that contains the result
+            ViewModel.SelectedProject = result.Project;
+            RefreshProjectList();
+
+            // Navigate to the correct tab
+            if (result.Type == SearchResultType.Note)
+            {
+                ViewModel.ActiveTab = "Notes";
+                UpdateTabStyles();
+                ContentFrame.Navigate(typeof(NotesPage), ViewModel);
+            }
+            else if (result.Type == SearchResultType.Task)
+            {
+                ViewModel.ActiveTab = "Tasks";
+                UpdateTabStyles();
+                ContentFrame.Navigate(typeof(TasksPage), ViewModel);
+            }
+        }
+
         private void SetDragRegion()
         {
             if (_appWindow == null) return;
@@ -194,6 +271,9 @@ namespace DesktopApp
                 case "Tasks":
                     ContentFrame.Navigate(typeof(TasksPage), ViewModel);
                     break;
+                case "Files":
+                    ContentFrame.Navigate(typeof(FilesPage), ViewModel);
+                    break;
                 case "Settings":
                     ContentFrame.Navigate(typeof(SettingsPage));
                     break;
@@ -202,7 +282,7 @@ namespace DesktopApp
 
         private void UpdateTabStyles()
         {
-            var tabs = new[] { TabLinks, TabNotes, TabTasks, TabSettings };
+            var tabs = new[] { TabLinks, TabNotes, TabTasks, TabFiles, TabSettings };
             foreach (var tab in tabs)
             {
                 bool active = tab.Tag.ToString() == ViewModel.ActiveTab;

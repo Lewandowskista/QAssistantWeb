@@ -1,9 +1,12 @@
 ﻿using Microsoft.UI.Xaml;
+using System;
 
 namespace DesktopApp
 {
     public partial class App : Application
     {
+        public static IntPtr MainWindowHandle { get; private set; }
+
         public App()
         {
             this.InitializeComponent();
@@ -13,6 +16,7 @@ namespace DesktopApp
         {
             m_window = new MainWindow();
             m_window.Activate();
+            MainWindowHandle = WinRT.Interop.WindowNative.GetWindowHandle(m_window);
         }
 
         private Window? m_window;
