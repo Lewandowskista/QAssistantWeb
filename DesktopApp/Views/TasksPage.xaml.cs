@@ -254,6 +254,22 @@ namespace DesktopApp.Views
                 SelectedItem = task.Priority,
                 HorizontalAlignment = HorizontalAlignment.Stretch
             };
+            var dueDatePicker = new DatePicker
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch
+            };
+            if (task.DueDate.HasValue)
+                dueDatePicker.Date = new DateTimeOffset(task.DueDate.Value);
+
+            var clearDueDate = new CheckBox
+            {
+                Content = "No due date",
+                IsChecked = !task.DueDate.HasValue,
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+            clearDueDate.Checked += (s, e) => dueDatePicker.Visibility = Visibility.Collapsed;
+            clearDueDate.Unchecked += (s, e) => dueDatePicker.Visibility = Visibility.Visible;
+            dueDatePicker.Visibility = task.DueDate.HasValue ? Visibility.Visible : Visibility.Collapsed;
 
             var panel = new StackPanel { Spacing = 10 };
             panel.Children.Add(new TextBlock
@@ -274,6 +290,9 @@ namespace DesktopApp.Views
             panel.Children.Add(statusPicker);
             panel.Children.Add(new TextBlock { Text = "Priority", Foreground = new SolidColorBrush(Colors.White) });
             panel.Children.Add(priorityPicker);
+            panel.Children.Add(new TextBlock { Text = "Due Date", Foreground = new SolidColorBrush(Colors.White) });
+            panel.Children.Add(clearDueDate);
+            panel.Children.Add(dueDatePicker);
 
             var dialog = new ContentDialog
             {
@@ -291,6 +310,9 @@ namespace DesktopApp.Views
             {
                 task.Status = (Models.TaskStatus)statusPicker.SelectedItem!;
                 task.Priority = (TaskPriority)priorityPicker.SelectedItem!;
+                task.DueDate = clearDueDate.IsChecked == true
+                    ? null
+                    : dueDatePicker.Date.DateTime;
                 await _vm.SaveAsync();
                 RefreshBoard(_vm.SelectedProject.Tasks);
             }
@@ -307,7 +329,13 @@ namespace DesktopApp.Views
             if (_vm?.SelectedProject == null) return;
 
             var titleBox = new TextBox { PlaceholderText = "Task title..." };
-            var descBox = new TextBox { PlaceholderText = "Description (optional)", AcceptsReturn = true, Height = 80 };
+            var descBox = new TextBox
+            {
+                PlaceholderText = "Description (optional)",
+                AcceptsReturn = true,
+                Height = 80,
+                TextWrapping = TextWrapping.Wrap
+            };
             var statusPicker = new ComboBox
             {
                 ItemsSource = Enum.GetValues(typeof(Models.TaskStatus)),
@@ -322,6 +350,20 @@ namespace DesktopApp.Views
             };
             var ticketBox = new TextBox { PlaceholderText = "Ticket URL (optional)" };
 
+            var dueDatePicker = new DatePicker
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                Visibility = Visibility.Collapsed
+            };
+            var setDueDate = new CheckBox
+            {
+                Content = "Set due date",
+                IsChecked = false,
+                Foreground = new SolidColorBrush(Colors.White)
+            };
+            setDueDate.Checked += (s, e) => dueDatePicker.Visibility = Visibility.Visible;
+            setDueDate.Unchecked += (s, e) => dueDatePicker.Visibility = Visibility.Collapsed;
+
             var panel = new StackPanel { Spacing = 10 };
             panel.Children.Add(new TextBlock { Text = "Title", Foreground = new SolidColorBrush(Colors.White) });
             panel.Children.Add(titleBox);
@@ -333,6 +375,9 @@ namespace DesktopApp.Views
             panel.Children.Add(priorityPicker);
             panel.Children.Add(new TextBlock { Text = "Ticket URL", Foreground = new SolidColorBrush(Colors.White) });
             panel.Children.Add(ticketBox);
+            panel.Children.Add(new TextBlock { Text = "Due Date", Foreground = new SolidColorBrush(Colors.White) });
+            panel.Children.Add(setDueDate);
+            panel.Children.Add(dueDatePicker);
 
             var dialog = new ContentDialog
             {
@@ -347,12 +392,15 @@ namespace DesktopApp.Views
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(titleBox.Text))
             {
-                var task = new ProjectTask();
-                task.Title = titleBox.Text.Trim();
-                task.Description = descBox.Text.Trim();
-                task.Status = (Models.TaskStatus)statusPicker.SelectedItem!;
-                task.Priority = (TaskPriority)priorityPicker.SelectedItem!;
-                task.TicketUrl = ticketBox.Text.Trim();
+                var task = new ProjectTask
+                {
+                    Title = titleBox.Text.Trim(),
+                    Description = descBox.Text.Trim(),
+                    Status = (Models.TaskStatus)statusPicker.SelectedItem!,
+                    Priority = (TaskPriority)priorityPicker.SelectedItem!,
+                    TicketUrl = ticketBox.Text.Trim(),
+                    DueDate = setDueDate.IsChecked == true ? dueDatePicker.Date.DateTime : null
+                };
                 _vm.SelectedProject.Tasks.Add(task);
                 await _vm.SaveAsync();
                 RefreshBoard(_vm.SelectedProject.Tasks);

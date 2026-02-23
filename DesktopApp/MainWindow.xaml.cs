@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using DesktopApp.Models;
+using DesktopApp.Services;
 using DesktopApp.ViewModels;
 using DesktopApp.Views;
 using Microsoft.UI;
@@ -17,6 +18,7 @@ namespace DesktopApp
     {
         public MainViewModel ViewModel { get; } = new();
         private AppWindow? _appWindow;
+        private readonly ReminderService _reminderService = new();
 
         public MainWindow()
         {
@@ -30,12 +32,22 @@ namespace DesktopApp
                     e.Handled = true;
                     App.HideMainWindow();
                 }
+                else
+                {
+                    _reminderService.Stop();
+                }
             };
         }
+
         private async void LoadDataAsync()
         {
             await ViewModel.InitializeAsync();
             RefreshProjectList();
+
+            _reminderService.Start(
+                () => ViewModel.Projects.ToList(),
+                (title, message) => ShowNotificationBanner(title, message)
+            );
         }
 
         // ── Window setup ─────────────────────────────────────────────
@@ -97,6 +109,50 @@ namespace DesktopApp
             });
         }
 
+        // ── Notifications ────────────────────────────────────────────
+        private void ShowNotificationBanner(string title, string message)
+        {
+            DispatcherQueue.TryEnqueue(() =>
+            {
+                NotificationTitle.Text = title;
+                NotificationMessage.Text = message;
+                NotificationBanner.Visibility = Visibility.Visible;
+
+                if (title.Contains("Overdue"))
+                {
+                    NotificationBanner.Background = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 60, 20, 20));
+                    NotificationBanner.BorderBrush = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 248, 113, 113));
+                    NotificationTitle.Foreground = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 248, 113, 113));
+                }
+                else if (title.Contains("Due Today"))
+                {
+                    NotificationBanner.Background = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 50, 35, 10));
+                    NotificationBanner.BorderBrush = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 251, 191, 36));
+                    NotificationTitle.Foreground = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 251, 191, 36));
+                }
+                else
+                {
+                    NotificationBanner.Background = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 20, 50, 30));
+                    NotificationBanner.BorderBrush = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 52, 211, 153));
+                    NotificationTitle.Foreground = new SolidColorBrush(
+                        Windows.UI.Color.FromArgb(255, 52, 211, 153));
+                }
+            });
+        }
+
+        private void DismissNotification_Click(object sender, RoutedEventArgs e)
+        {
+            NotificationBanner.Visibility = Visibility.Collapsed;
+        }
+
         // ── Events ───────────────────────────────────────────────────
         private void PinToggle_Checked(object sender, RoutedEventArgs e)
         {
@@ -145,19 +201,13 @@ namespace DesktopApp
 
         private async void ProjectList_DragItemsCompleted(object sender, DragItemsCompletedEventArgs e)
         {
-            // Rebuild the projects list from the current ListView order
             var reordered = ProjectList.Items.OfType<Project>().ToList();
-
-            // Update without clearing first to avoid selection issues
             for (int i = 0; i < reordered.Count; i++)
             {
                 var existing = ViewModel.Projects.IndexOf(reordered[i]);
                 if (existing != i)
-                {
                     ViewModel.Projects.Move(existing, i);
-                }
             }
-
             await ViewModel.SaveAsync();
         }
 
@@ -171,18 +221,17 @@ namespace DesktopApp
                 PlaceholderText = "Project name..."
             };
 
-            // Color options
             var colors = new[]
             {
-        ("#A78BFA", "Purple"),
-        ("#60A5FA", "Blue"),
-        ("#34D399", "Green"),
-        ("#F87171", "Red"),
-        ("#FBBF24", "Yellow"),
-        ("#F472B6", "Pink"),
-        ("#94A3B8", "Gray"),
-        ("#FB923C", "Orange")
-    };
+                ("#A78BFA", "Purple"),
+                ("#60A5FA", "Blue"),
+                ("#34D399", "Green"),
+                ("#F87171", "Red"),
+                ("#FBBF24", "Yellow"),
+                ("#F472B6", "Pink"),
+                ("#94A3B8", "Gray"),
+                ("#FB923C", "Orange")
+            };
 
             var colorPanel = new StackPanel
             {
@@ -191,7 +240,6 @@ namespace DesktopApp
                 Margin = new Thickness(0, 12, 0, 0)
             };
 
-            Button? selectedColorBtn = null;
             string selectedColor = ViewModel.SelectedProject.Color;
 
             foreach (var (hex, name) in colors)
@@ -215,7 +263,6 @@ namespace DesktopApp
                 btn.Click += (s, args) =>
                 {
                     selectedColor = (string)((Button)s).Tag;
-                    // Reset all borders
                     foreach (var child in colorPanel.Children)
                         if (child is Button b)
                             b.BorderThickness = new Thickness(
