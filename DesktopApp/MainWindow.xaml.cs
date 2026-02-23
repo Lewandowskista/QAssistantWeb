@@ -157,11 +157,15 @@ namespace DesktopApp
         private void PinToggle_Checked(object sender, RoutedEventArgs e)
         {
             SetAlwaysOnTop(true);
+            PinToggle.Background = new SolidColorBrush(
+                Windows.UI.Color.FromArgb(255, 167, 139, 250));
         }
 
         private void PinToggle_Unchecked(object sender, RoutedEventArgs e)
         {
             SetAlwaysOnTop(false);
+            PinToggle.Background = new SolidColorBrush(
+                Windows.UI.Color.FromArgb(255, 37, 37, 53));
         }
 
         private void MinimizeBtn_Click(object sender, RoutedEventArgs e)

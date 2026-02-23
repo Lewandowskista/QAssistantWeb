@@ -49,8 +49,26 @@
               CornerRadius="6"
               Margin="0,0,8,0"
               Padding="0"
-              Background="#A78BFA"
               BorderThickness="0">
+                        <ToggleButton.Style>
+                            <Style TargetType="ToggleButton">
+                                <Setter Property="Background" Value="#252535"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="CornerRadius" Value="6"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ToggleButton">
+                                            <Border x:Name="RootBorder"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6">
+                                                <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ToggleButton.Style>
                         <TextBlock Text="Pin" FontSize="12"
                FontWeight="SemiBold"
                Foreground="White"
