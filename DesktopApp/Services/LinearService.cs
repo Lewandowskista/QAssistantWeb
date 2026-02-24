@@ -98,6 +98,7 @@ namespace DesktopApp.Services
                         Status = MapLinearStatus(stateName),
                         Priority = MapLinearPriority(node.GetProperty("priority").GetInt32()),
                         TicketUrl = node.GetProperty("url").GetString() ?? "",
+                        RawDescription = node.GetProperty("description").GetString() ?? "",
                         Assignee = assignee,
                         Labels = labels,
                         DueDate = dueDate,
@@ -163,6 +164,58 @@ namespace DesktopApp.Services
             await PostQueryAsync(mutation);
         }
 
+        public async Task<List<LinearComment>> GetCommentsAsync(string issueId)
+        {
+            var query = $@"
+    {{
+        issue(id: ""{issueId}"") {{
+            comments {{
+                nodes {{
+                    body
+                    createdAt
+                    user {{ name }}
+                }}
+            }}
+        }}
+    }}";
+
+            var response = await PostQueryAsync(query);
+            var comments = new List<LinearComment>();
+
+            try
+            {
+                using var doc = JsonDocument.Parse(response);
+                var root = doc.RootElement;
+
+                if (!root.TryGetProperty("data", out var data)) return comments;
+                if (!data.TryGetProperty("issue", out var issue)) return comments;
+                if (!issue.TryGetProperty("comments", out var commentsEl)) return comments;
+
+                var nodes = commentsEl.GetProperty("nodes");
+                foreach (var node in nodes.EnumerateArray())
+                {
+                    string author = "";
+                    if (node.TryGetProperty("user", out var user) &&
+                        user.ValueKind != JsonValueKind.Null)
+                        author = user.GetProperty("name").GetString() ?? "";
+
+                    DateTime createdAt = DateTime.Now;
+                    if (node.TryGetProperty("createdAt", out var createdAtEl))
+                        DateTime.TryParse(createdAtEl.GetString(), out createdAt);
+
+                    comments.Add(new LinearComment
+                    {
+                        Body = CleanDescription(node.GetProperty("body").GetString()),
+                        AuthorName = author,
+                        CreatedAt = createdAt
+                    });
+                }
+            }
+            catch { }
+
+            return comments;
+        }
+
         public async Task AddCommentAsync(string issueId, string body)
         {
             var mutation = $@"
@@ -186,23 +239,41 @@ namespace DesktopApp.Services
         {
             if (string.IsNullOrEmpty(raw)) return string.Empty;
 
-            // Remove markdown images ![alt](url)
-            raw = Regex.Replace(raw, @"!\[.*?\]\(.*?\)", "[image]");
+            // Remove markdown images — handled separately via ExtractMediaUrls
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"!\[.*?\]\(.*?\)", "[image]");
             // Remove markdown links [text](url) -> text
-            raw = Regex.Replace(raw, @"\[([^\]]+)\]\([^\)]+\)", "$1");
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"\[([^\]]+)\]\([^\)]+\)", "$1");
             // Remove HTML tags
-            raw = Regex.Replace(raw, @"<[^>]+>", "");
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"<[^>]+>", "");
             // Remove markdown headers
-            raw = Regex.Replace(raw, @"#{1,6}\s", "");
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"#{1,6}\s", "");
             // Remove bold/italic
-            raw = Regex.Replace(raw, @"\*{1,3}([^\*]+)\*{1,3}", "$1");
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"\*{1,3}([^\*]+)\*{1,3}", "$1");
             // Remove code blocks
-            raw = Regex.Replace(raw, @"```[\s\S]*?```", "[code block]");
-            raw = Regex.Replace(raw, @"`([^`]+)`", "$1");
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"```[\s\S]*?```", "[code block]");
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"`([^`]+)`", "$1");
             // Trim excess whitespace
-            raw = Regex.Replace(raw, @"\n{3,}", "\n\n").Trim();
+            raw = System.Text.RegularExpressions.Regex.Replace(raw, @"\n{3,}", "\n\n").Trim();
 
             return raw;
+        }
+
+        public static List<string> ExtractMediaUrls(string? raw)
+        {
+            var urls = new List<string>();
+            if (string.IsNullOrEmpty(raw)) return urls;
+
+            // Extract markdown images ![alt](url)
+            var imageMatches = System.Text.RegularExpressions.Regex.Matches(raw, @"!\[.*?\]\((.*?)\)");
+            foreach (System.Text.RegularExpressions.Match match in imageMatches)
+                urls.Add(match.Groups[1].Value);
+
+            // Extract HTML img src
+            var htmlMatches = System.Text.RegularExpressions.Regex.Matches(raw, @"<img[^>]+src=""([^""]+)""");
+            foreach (System.Text.RegularExpressions.Match match in htmlMatches)
+                urls.Add(match.Groups[1].Value);
+
+            return urls;
         }
 
         private static Models.TaskStatus MapLinearStatus(string state) => state.ToLower() switch
