@@ -1,17 +1,15 @@
 name: Release Portable App
 
-# 1. This workflow only triggers when you push a tag starting with 'v' (e.g., v1.0.0)
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch: # Keeps the manual trigger button
+  workflow_dispatch:
 
 jobs:
   build-and-release:
     runs-on: windows-latest
     
-    # CRITICAL: Actions need permission to write to your repository to create a Release
     permissions:
       contents: write 
 
@@ -24,18 +22,47 @@ jobs:
       with:
         dotnet-version: '10.0.x'
 
-    - name: Publish Single-File App
-      # 2. Compile the app using the hardcoded rules in your .csproj
+    - name: Install Windows App SDK
+      run: |
+        Invoke-WebRequest -Uri "https://aka.ms/windowsappsdk/1.8/latest/windowsappruntimeinstall-x64.exe" -OutFile "WinAppRuntime.exe"
+        Start-Process -FilePath "WinAppRuntime.exe" -Args "--quiet" -Wait
+
+    - name: Publish App
       run: >
-        dotnet publish QAssistant/QAssistant.csproj 
-        -c Release 
+        dotnet publish QAssistant/QAssistant.csproj
+        -c Release
+        -r win-x64
+        --self-contained true
+        /p:PublishTrimmed=false
+        /p:PublishReadyToRun=false
+        /p:TargetFramework=net10.0-windows10.0.19041.0
         -o ./publish_output
 
+    - name: Download Windows App Runtime Redistributable
+      run: |
+        Invoke-WebRequest -Uri "https://aka.ms/windowsappsdk/1.8/latest/windowsappruntimeinstall-x64.exe" -OutFile "./publish_output/WinAppRuntime_Setup.exe"
+
+    - name: Zip Release
+      run: |
+        Compress-Archive -Path ./publish_output/* -DestinationPath ./QAssistant_v${{ github.ref_name }}.zip
+
     - name: Publish to GitHub Releases
-      # 3. This official community action takes your .exe and attaches it to a new Release page
       uses: softprops/action-gh-release@v2
       with:
-        files: ./publish_output/QAssistant.exe # The exact file to attach
-        generate_release_notes: true # Auto-generates a changelog based on your commits!
+        files: ./QAssistant_v${{ github.ref_name }}.zip
+        generate_release_notes: true
+        body: |
+          ## Installation
+          1. Extract the zip
+          2. Run `WinAppRuntime_Setup.exe` first (only needed once per machine)
+          3. Run `QAssistant.exe`
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Commit, tag and push:
+```
+git add .
+git commit -m "Update workflow to NET 10"
+git tag v1.0.2
+git push origin v1.0.2
