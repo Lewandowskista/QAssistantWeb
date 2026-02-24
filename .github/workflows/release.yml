@@ -49,11 +49,3 @@ jobs:
         files: ./QAssistant_v${{ github.ref_name }}.zip
         generate_release_notes: true
         body: "## Installation\n1. Extract the zip\n2. Run WinAppRuntime_Setup.exe first (only needed once per machine)\n3. Run QAssistant.exe"
-```
-
-Commit and push:
-```
-git add .
-git commit -m "Fix yaml body syntax"
-git tag v1.0.5
-git push origin v1.0.5
