@@ -32,7 +32,7 @@ namespace QAssistant
         {
             this.InitializeComponent();
             SetupWindow();
-            _ = LoadDataAsync();  // Explicitly fire and forget with _ discard
+            this.DispatcherQueue.TryEnqueue(async () => await LoadDataAsync());
             this.Closed += (s, e) =>
             {
                 if (App.MinimizeToTray)
@@ -386,6 +386,7 @@ namespace QAssistant
                 ViewModel.SelectedProject = p;
                 await ViewModel.SaveAsync();
                 RefreshProjectList();
+                System.Diagnostics.Debug.WriteLine($"Project created: {p.Name}");
             }
         }
 
@@ -516,11 +517,23 @@ namespace QAssistant
 
         private void RefreshProjectList()
         {
-            ProjectList.ItemsSource = null;
-            ProjectList.ItemsSource = ViewModel.Projects;
-            if (ViewModel.SelectedProject != null)
-                ProjectList.SelectedItem = ViewModel.SelectedProject;
-            NavigateToCurrentTab();
+            try
+            {
+                ProjectList.ItemsSource = null;
+                if (ViewModel.Projects?.Count > 0)
+                {
+                    ProjectList.ItemsSource = ViewModel.Projects;
+                    if (ViewModel.SelectedProject != null)
+                        ProjectList.SelectedItem = ViewModel.SelectedProject;
+                    else if (ViewModel.Projects.Count > 0)
+                        ProjectList.SelectedIndex = 0;
+                }
+                NavigateToCurrentTab();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RefreshProjectList error: {ex.Message}");
+            }
         }
     }
 }

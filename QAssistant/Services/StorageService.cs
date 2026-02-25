@@ -36,9 +36,21 @@ namespace QAssistant.Services
         {
             try
             {
-                var folder = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "QAssistant");
+                // Try ApplicationData folder first (standard location)
+                string folder;
+                try
+                {
+                    folder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "QAssistant");
+                }
+                catch
+                {
+                    // Fallback to LocalApplicationData if ApplicationData fails (can happen in some packaged scenarios)
+                    folder = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                        "QAssistant");
+                }
 
                 // Ensure directory exists and is writable
                 if (!Directory.Exists(folder))

@@ -2,6 +2,7 @@
 using CommunityToolkit.Mvvm.Input;
 using QAssistant.Services;
 using QAssistant.Models;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
@@ -23,21 +24,30 @@ namespace QAssistant.ViewModels
 
         public async Task InitializeAsync()
         {
-            var loaded = await _storage.LoadProjectsAsync();
-            Projects = new ObservableCollection<Project>(loaded);
-
-            if (Projects.Count == 0)
+            try
             {
-                var demo = new Project { Name = "My QA Project" };
-                demo.Links.Add(new EmbedLink { Title = "Notion Workspace", Url = "https://notion.so", Type = LinkType.Notion });
-                demo.Links.Add(new EmbedLink { Title = "Figma Designs", Url = "https://figma.com", Type = LinkType.Figma });
-                demo.Links.Add(new EmbedLink { Title = "Linear Board", Url = "https://linear.app", Type = LinkType.Linear });
-                demo.Links.Add(new EmbedLink { Title = "GitHub Repo", Url = "https://github.com", Type = LinkType.GitHub });
-                Projects.Add(demo);
-                await SaveAsync();
-            }
+                var loaded = await _storage.LoadProjectsAsync();
+                Projects = new ObservableCollection<Project>(loaded);
 
-            SelectedProject = Projects[0];
+                if (Projects.Count == 0)
+                {
+                    var demo = new Project { Name = "My QA Project" };
+                    demo.Links.Add(new EmbedLink { Title = "Notion Workspace", Url = "https://notion.so", Type = LinkType.Notion });
+                    demo.Links.Add(new EmbedLink { Title = "Figma Designs", Url = "https://figma.com", Type = LinkType.Figma });
+                    demo.Links.Add(new EmbedLink { Title = "Linear Board", Url = "https://linear.app", Type = LinkType.Linear });
+                    demo.Links.Add(new EmbedLink { Title = "GitHub Repo", Url = "https://github.com", Type = LinkType.GitHub });
+                    Projects.Add(demo);
+                    await SaveAsync();
+                }
+
+                SelectedProject = Projects.Count > 0 ? Projects[0] : null;
+                System.Diagnostics.Debug.WriteLine($"MainViewModel.InitializeAsync completed. Projects: {Projects.Count}, Selected: {SelectedProject?.Name}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainViewModel.InitializeAsync error: {ex.Message}\n{ex.StackTrace}");
+                throw;
+            }
         }
 
         [RelayCommand]
