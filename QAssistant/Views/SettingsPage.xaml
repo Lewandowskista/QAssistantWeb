@@ -247,6 +247,34 @@
                 </StackPanel>
             </Border>
 
-        </StackPanel>
-    </ScrollViewer>
-</Page>
+                    <!-- Diagnostics Section -->
+                    <Border Background="#1A1A24" CornerRadius="12"
+                            BorderBrush="#2A2A3A" BorderThickness="1" Padding="24">
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="DIAGNOSTICS" Foreground="#6B7280"
+                           FontSize="10" FontWeight="SemiBold"
+                           CharacterSpacing="150"/>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Data Storage Path" Foreground="#E2E8F0" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="DataPathText" Text="" 
+                                   Foreground="#A78BFA" FontSize="11" 
+                                   TextWrapping="Wrap" FontFamily="Consolas"/>
+                            </StackPanel>
+
+                            <StackPanel Spacing="8">
+                                <TextBlock Text="Log File Path" Foreground="#E2E8F0" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock x:Name="LogPathText" Text="" 
+                                   Foreground="#A78BFA" FontSize="11" 
+                                   TextWrapping="Wrap" FontFamily="Consolas"/>
+                            </StackPanel>
+
+                            <Button x:Name="OpenLogButton" Content="Open Log File"
+                            Click="OpenLogFile_Click"
+                            Background="#252535" Foreground="#A78BFA"
+                            CornerRadius="8" Padding="12,8"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Page>

@@ -134,6 +134,7 @@ namespace QAssistant.Services
             try
             {
                 LogMessage($"SaveProjectsAsync called with {projects.Count} projects");
+                LogMessage($"Target path: {_dataPath}");
 
                 // Ensure directory exists before writing
                 var folder = Path.GetDirectoryName(_dataPath);
@@ -143,26 +144,61 @@ namespace QAssistant.Services
                     LogMessage($"Created directory: {folder}");
                 }
 
+                // Verify folder exists
+                if (string.IsNullOrEmpty(folder) || !Directory.Exists(folder))
+                {
+                    LogMessage($"ERROR: Directory does not exist and could not be created: {folder}");
+                    throw new Exception($"Cannot access directory: {folder}");
+                }
+
                 // Serialize to string first for better error logging
                 string jsonContent;
                 try
                 {
                     jsonContent = JsonSerializer.Serialize(projects, _jsonContext.ListProject);
+                    LogMessage($"Serialization successful. Content length: {jsonContent.Length}");
                 }
                 catch (Exception serializeEx)
                 {
                     LogMessage($"JsonSerializerContext serialization failed: {serializeEx.Message}. Trying default serializer...");
                     var options = new JsonSerializerOptions { WriteIndented = true };
                     jsonContent = JsonSerializer.Serialize(projects, options);
+                    LogMessage($"Default serialization successful. Content length: {jsonContent.Length}");
                 }
 
-                // Write to file
-                await File.WriteAllTextAsync(_dataPath, jsonContent);
+                // Write to file with explicit error handling
+                try
+                {
+                    await File.WriteAllTextAsync(_dataPath, jsonContent);
+                    LogMessage($"File write successful: {_dataPath}");
+
+                    // Verify file was written
+                    if (File.Exists(_dataPath))
+                    {
+                        var fileInfo = new FileInfo(_dataPath);
+                        LogMessage($"File verified. Size: {fileInfo.Length} bytes");
+                    }
+                    else
+                    {
+                        LogMessage($"ERROR: File was not created after write operation");
+                    }
+                }
+                catch (UnauthorizedAccessException uaEx)
+                {
+                    LogMessage($"Access denied writing to {_dataPath}: {uaEx.Message}");
+                    throw;
+                }
+                catch (IOException ioEx)
+                {
+                    LogMessage($"IO error writing to {_dataPath}: {ioEx.Message}");
+                    throw;
+                }
+
                 LogMessage($"SaveProjectsAsync succeeded. Saved {projects.Count} projects to {_dataPath}");
             }
             catch (Exception ex)
             {
-                LogMessage($"SaveProjectsAsync error: {ex.GetType().Name}: {ex.Message}");
+                LogMessage($"SaveProjectsAsync error: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
                 Debug.WriteLine($"StorageService SaveProjectsAsync error: {ex.Message}\n{ex.StackTrace}");
             }
         }

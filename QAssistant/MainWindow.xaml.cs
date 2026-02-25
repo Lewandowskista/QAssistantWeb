@@ -519,20 +519,34 @@ namespace QAssistant
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine($"RefreshProjectList called. Projects count: {ViewModel.Projects?.Count ?? 0}");
+
                 ProjectList.ItemsSource = null;
                 if (ViewModel.Projects?.Count > 0)
                 {
                     ProjectList.ItemsSource = ViewModel.Projects;
+                    System.Diagnostics.Debug.WriteLine($"ItemsSource set to {ViewModel.Projects.Count} projects");
+
                     if (ViewModel.SelectedProject != null)
+                    {
                         ProjectList.SelectedItem = ViewModel.SelectedProject;
+                        System.Diagnostics.Debug.WriteLine($"Selected project: {ViewModel.SelectedProject.Name}");
+                    }
                     else if (ViewModel.Projects.Count > 0)
+                    {
                         ProjectList.SelectedIndex = 0;
+                        System.Diagnostics.Debug.WriteLine($"Auto-selected first project");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"No projects to display");
                 }
                 NavigateToCurrentTab();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"RefreshProjectList error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"RefreshProjectList error: {ex.Message}\n{ex.StackTrace}");
             }
         }
     }

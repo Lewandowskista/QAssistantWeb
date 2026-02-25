@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using QAssistant.Services;
 using Microsoft.UI;
@@ -16,6 +17,24 @@ namespace QAssistant.Views
         {
             this.InitializeComponent();
             LoadSavedKeys();
+            LoadStorageDiagnostics();
+        }
+
+        private void LoadStorageDiagnostics()
+        {
+            try
+            {
+                var storage = new StorageService();
+                var dataPath = storage.GetDataPath();
+                var logPath = storage.GetLogPath();
+
+                DataPathText.Text = dataPath;
+                LogPathText.Text = logPath;
+            }
+            catch (Exception ex)
+            {
+                DataPathText.Text = $"Error: {ex.Message}";
+            }
         }
 
         private void LoadSavedKeys()
@@ -269,6 +288,42 @@ namespace QAssistant.Views
             };
 
             await dialog.ShowAsync();
+        }
+
+        private async void OpenLogFile_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var storage = new StorageService();
+                var logPath = storage.GetLogPath();
+
+                if (!System.IO.File.Exists(logPath))
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = "Log File Not Found",
+                        Content = $"Log file does not exist yet at:\n{logPath}",
+                        CloseButtonText = "OK",
+                        XamlRoot = this.XamlRoot
+                    };
+                    await dialog.ShowAsync();
+                    return;
+                }
+
+                var folder = System.IO.Path.GetDirectoryName(logPath);
+                await Windows.System.Launcher.LaunchFolderPathAsync(folder);
+            }
+            catch (Exception ex)
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "Error",
+                    Content = $"Could not open log folder: {ex.Message}",
+                    CloseButtonText = "OK",
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+            }
         }
     }
 }
