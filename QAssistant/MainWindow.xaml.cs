@@ -31,6 +31,12 @@ namespace QAssistant
         public MainWindow()
         {
             this.InitializeComponent();
+
+            // Force dark theme in code - ensures it applies in all environments
+            // (GitHub Actions runners default to Light theme which makes items invisible)
+            if (this.Content is FrameworkElement root)
+                root.RequestedTheme = ElementTheme.Dark;
+
             SetupWindow();
 
             // Delay data loading to ensure UI is fully initialized
