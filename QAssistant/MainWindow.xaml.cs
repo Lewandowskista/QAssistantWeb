@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using QAssistant.ViewModels;
 using QAssistant.Views;
 using Microsoft.UI;
@@ -31,7 +32,7 @@ namespace QAssistant
         {
             this.InitializeComponent();
             SetupWindow();
-            LoadDataAsync();
+            _ = LoadDataAsync();  // Explicitly fire and forget with _ discard
             this.Closed += (s, e) =>
             {
                 if (App.MinimizeToTray)
@@ -46,15 +47,22 @@ namespace QAssistant
             };
         }
 
-        private async void LoadDataAsync()
+        private async Task LoadDataAsync()
         {
-            await ViewModel.InitializeAsync();
-            RefreshProjectList();
+            try
+            {
+                await ViewModel.InitializeAsync();
+                RefreshProjectList();
 
-            _reminderService.Start(
-                () => ViewModel.Projects.ToList(),
-                (title, message) => ShowNotificationBanner(title, message)
-            );
+                _reminderService.Start(
+                    () => ViewModel.Projects.ToList(),
+                    (title, message) => ShowNotificationBanner(title, message)
+                );
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"LoadDataAsync error: {ex.Message}\n{ex.StackTrace}");
+            }
         }
 
         // ── Window setup ─────────────────────────────────────────────
