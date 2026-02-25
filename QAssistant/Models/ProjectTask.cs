@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace QAssistant.Models
 {
@@ -25,5 +26,6 @@ namespace QAssistant.Models
         public string? Assignee { get; set; }
         public string? Reporter { get; set; }
         public string? Labels { get; set; }
+        public List<string> AttachmentUrls { get; set; } = new();
     }
 }

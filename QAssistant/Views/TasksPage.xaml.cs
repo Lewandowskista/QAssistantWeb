@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Runtime.InteropServices.WindowsRuntime;
 using QAssistant.Helpers;
 using QAssistant.Models;
 using QAssistant.Services;
@@ -198,7 +200,7 @@ namespace QAssistant.Views
             }
 
             RenderDescription(task.Description);
-            RenderMedia(task.RawDescription);
+            RenderMedia(task);
 
             if (_isLinearMode)
             {
@@ -325,11 +327,25 @@ namespace QAssistant.Views
             }
         }
 
-        private void RenderMedia(string? rawDescription)
+        private void RenderMedia(ProjectTask task)
         {
             MediaContainer.Children.Clear();
 
-            var urls = LinearService.ExtractMediaUrls(rawDescription);
+            var urls = LinearService.ExtractMediaUrls(task.RawDescription);
+
+            // Also include attachment URLs from the Linear API
+            if (task.AttachmentUrls?.Count > 0)
+            {
+                foreach (var url in task.AttachmentUrls)
+                {
+                    if (!string.IsNullOrEmpty(url) &&
+                        !urls.Any(u => u.Equals(url, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        urls.Add(url);
+                    }
+                }
+            }
+
             if (urls.Count == 0)
             {
                 MediaSection.Visibility = Visibility.Collapsed;
@@ -361,8 +377,7 @@ namespace QAssistant.Views
                         MaxHeight = 300,
                         HorizontalAlignment = HorizontalAlignment.Stretch
                     };
-                    var bitmap = new BitmapImage(new Uri(url));
-                    img.Source = bitmap;
+                    _ = LoadImageWithAuthAsync(img, url);
 
                     img.Tapped += (s, e) => ShowMediaLightbox(capturedUrl);
 
@@ -383,8 +398,43 @@ namespace QAssistant.Views
         private void ShowMediaLightbox(string url)
         {
             _lightboxUrl = url;
-            LightboxImage.Source = new BitmapImage(new Uri(url));
+            _ = LoadImageWithAuthAsync(LightboxImage, url);
             LightboxOverlay.Visibility = Visibility.Visible;
+        }
+
+        private async System.Threading.Tasks.Task LoadImageWithAuthAsync(Image img, string url)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+
+                // Linear-hosted upload URLs require the API key to download
+                if (url.Contains("linear.app", StringComparison.OrdinalIgnoreCase))
+                {
+                    var key = CredentialService.LoadCredential("LinearApiKey");
+                    if (!string.IsNullOrEmpty(key))
+                        httpClient.DefaultRequestHeaders.Add("Authorization", key);
+                }
+
+                var bytes = await httpClient.GetByteArrayAsync(new Uri(url));
+
+                using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+                await stream.WriteAsync(bytes.AsBuffer());
+                stream.Seek(0);
+
+                var bitmap = new BitmapImage();
+                await bitmap.SetSourceAsync(stream);
+                img.Source = bitmap;
+            }
+            catch
+            {
+                // Fallback: try loading directly for public URLs
+                try
+                {
+                    img.Source = new BitmapImage(new Uri(url));
+                }
+                catch { }
+            }
         }
 
         private void CloseLightbox_Click(object sender, RoutedEventArgs e)
@@ -738,24 +788,35 @@ namespace QAssistant.Views
             }
 
             var sb = new System.Text.StringBuilder();
-            sb.AppendLine("You are a QA engineer assistant. Analyze the following issue and provide:");
-            sb.AppendLine("1. Root Cause Analysis");
-            sb.AppendLine("2. Impact Assessment");
-            sb.AppendLine("3. Suggested Fix");
-            sb.AppendLine("4. Prevention Recommendations");
+            sb.AppendLine("You are a senior QA engineer assistant. Analyze the following issue thoroughly and provide a detailed analysis for ALL four of the following sections. Each section MUST contain multiple sentences with specific, actionable insights.");
+            sb.AppendLine();
+            sb.AppendLine("Format your response using EXACTLY these markdown section headers (one per section):");
+            sb.AppendLine("## Root Cause Analysis");
+            sb.AppendLine("## Impact Assessment");
+            sb.AppendLine("## Suggested Fix");
+            sb.AppendLine("## Prevention Recommendations");
+            sb.AppendLine();
+            sb.AppendLine("Even if the issue description is brief, infer likely causes from the title and context and provide thorough analysis for every section. Do not skip any section. Do not combine sections.");
+            sb.AppendLine();
+            sb.AppendLine("---");
             sb.AppendLine();
             sb.AppendLine("## Issue Details");
-            sb.AppendLine($"**ID:** {_selectedTask.IssueIdentifier}");
             sb.AppendLine($"**Title:** {_selectedTask.Title}");
+            if (!string.IsNullOrEmpty(_selectedTask.IssueIdentifier))
+                sb.AppendLine($"**ID:** {_selectedTask.IssueIdentifier}");
             sb.AppendLine($"**Status:** {_selectedTask.Status}");
             sb.AppendLine($"**Priority:** {_selectedTask.Priority}");
-            sb.AppendLine($"**Assignee:** {_selectedTask.Assignee}");
-            sb.AppendLine($"**Labels:** {_selectedTask.Labels}");
+            if (!string.IsNullOrEmpty(_selectedTask.Assignee))
+                sb.AppendLine($"**Assignee:** {_selectedTask.Assignee}");
+            if (!string.IsNullOrEmpty(_selectedTask.Labels))
+                sb.AppendLine($"**Labels:** {_selectedTask.Labels}");
             if (_selectedTask.DueDate.HasValue)
                 sb.AppendLine($"**Due Date:** {_selectedTask.DueDate.Value:MMM d, yyyy}");
             sb.AppendLine();
             sb.AppendLine("## Description");
-            sb.AppendLine(_selectedTask.Description);
+            sb.AppendLine(string.IsNullOrWhiteSpace(_selectedTask.Description)
+                ? "(No description provided — analyze based on the title and available metadata.)"
+                : _selectedTask.Description);
 
             if (_isLinearMode && !string.IsNullOrEmpty(_selectedTask.ExternalId))
             {
@@ -836,30 +897,6 @@ namespace QAssistant.Views
             var contentStack = new StackPanel { Spacing = 16 };
 
             var sections = new[] { "Root Cause Analysis", "Impact Assessment", "Suggested Fix", "Prevention Recommendations" };
-            var sectionTexts = new List<string>();
-            var currentSection = string.Empty;
-
-            foreach (var line in analysisResult.Split('\n'))
-            {
-                bool isSection = false;
-                foreach (var section in sections)
-                {
-                    if (line.Contains(section, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (!string.IsNullOrWhiteSpace(currentSection))
-                            sectionTexts.Add(currentSection);
-                        currentSection = section;
-                        isSection = true;
-                        break;
-                    }
-                }
-                if (!isSection && !string.IsNullOrWhiteSpace(line))
-                {
-                    currentSection += (string.IsNullOrWhiteSpace(currentSection) ? "" : "\n") + line;
-                }
-            }
-            if (!string.IsNullOrWhiteSpace(currentSection))
-                sectionTexts.Add(currentSection);
 
             var resultLines = analysisResult.Split('\n');
             int sectionIndex = 0;
@@ -879,8 +916,18 @@ namespace QAssistant.Views
                     }
                 }
 
-                var sectionContent = string.Join("\n", resultLines.Skip(sectionStartIndex + 1).Take(sectionEndIndex - sectionStartIndex - 1))
-                    .Trim();
+                // Check if the header line itself contains inline content after the section name
+                var headerLine = resultLines[sectionStartIndex];
+                var nameIdx = headerLine.IndexOf(section, StringComparison.OrdinalIgnoreCase);
+                var inlineContent = headerLine.Substring(nameIdx + section.Length).TrimStart(':', ' ', '*', '#').Trim();
+
+                var bodyLines = resultLines.Skip(sectionStartIndex + 1).Take(sectionEndIndex - sectionStartIndex - 1);
+                var contentParts = new List<string>();
+                if (!string.IsNullOrWhiteSpace(inlineContent))
+                    contentParts.Add(inlineContent);
+                contentParts.AddRange(bodyLines);
+
+                var sectionContent = string.Join("\n", contentParts).Trim();
 
                 if (string.IsNullOrWhiteSpace(sectionContent)) continue;
 

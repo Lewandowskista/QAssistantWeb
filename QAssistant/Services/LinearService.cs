@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -26,6 +27,7 @@ namespace QAssistant.Services
         private static readonly Regex s_excessNewlinesRegex = new(@"\n{3,}", RegexOptions.Compiled);
         private static readonly Regex s_extractMarkdownImageUrlRegex = new(@"!\[.*?\]\((.*?)\)", RegexOptions.Compiled);
         private static readonly Regex s_extractHtmlImgSrcRegex = new(@"<img[^>]+src=""([^""]+)""", RegexOptions.Compiled);
+        private static readonly Regex s_extractPlainImageUrlRegex = new(@"https?://[^\s\)\]""]+\.(?:png|jpe?g|gif|webp|svg|bmp|mp4|webm|mov)(?:\?[^\s\)\]""]*)?" , RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public LinearService(string apiKey)
         {
@@ -51,6 +53,7 @@ namespace QAssistant.Services
                 dueDate
                 url
                 labels { nodes { name } }
+                attachments { nodes { url title } }
             }
         }
     }";
@@ -100,6 +103,24 @@ namespace QAssistant.Services
                         labels = string.Join(", ", labelList);
                     }
 
+                    // Parse attachment URLs
+                    var attachmentUrls = new List<string>();
+                    if (node.TryGetProperty("attachments", out var attachmentsEl) &&
+                        attachmentsEl.ValueKind != JsonValueKind.Null &&
+                        attachmentsEl.TryGetProperty("nodes", out var attachmentNodes))
+                    {
+                        foreach (var att in attachmentNodes.EnumerateArray())
+                        {
+                            if (att.TryGetProperty("url", out var attUrlEl) &&
+                                attUrlEl.ValueKind != JsonValueKind.Null)
+                            {
+                                var attUrl = attUrlEl.GetString();
+                                if (!string.IsNullOrEmpty(attUrl))
+                                    attachmentUrls.Add(attUrl);
+                            }
+                        }
+                    }
+
                     var task = new ProjectTask
                     {
                         Id = Guid.NewGuid(),
@@ -115,7 +136,8 @@ namespace QAssistant.Services
                         Assignee = assignee,
                         Labels = labels,
                         DueDate = dueDate,
-                        Source = TaskSource.Linear
+                        Source = TaskSource.Linear,
+                        AttachmentUrls = attachmentUrls
                     };
                     tasks.Add(task);
                 }
@@ -267,8 +289,8 @@ namespace QAssistant.Services
 
         public static List<string> ExtractMediaUrls(string? raw)
         {
-            var urls = new List<string>();
-            if (string.IsNullOrEmpty(raw)) return urls;
+            var urls = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (string.IsNullOrEmpty(raw)) return urls.ToList();
 
             foreach (Match match in s_extractMarkdownImageUrlRegex.Matches(raw))
                 urls.Add(match.Groups[1].Value);
@@ -276,7 +298,10 @@ namespace QAssistant.Services
             foreach (Match match in s_extractHtmlImgSrcRegex.Matches(raw))
                 urls.Add(match.Groups[1].Value);
 
-            return urls;
+            foreach (Match match in s_extractPlainImageUrlRegex.Matches(raw))
+                urls.Add(match.Value);
+
+            return urls.ToList();
         }
 
         private static Models.TaskStatus MapLinearStatus(string state) => state.ToLower() switch
