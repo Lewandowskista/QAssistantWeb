@@ -1,3 +1,4 @@
+[README.md](https://github.com/user-attachments/files/25545093/README.md)
 # QAssistant
 
 > A floating desktop companion for QA engineers — built with WinUI 3 and .NET 10
