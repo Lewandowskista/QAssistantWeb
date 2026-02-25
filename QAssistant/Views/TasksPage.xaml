@@ -42,21 +42,6 @@
             </Grid>
         </Border>
 
-        <!-- Busy / Loading Overlay (used instead of a ContentDialog to avoid modal issues) -->
-        <Grid x:Name="BusyOverlay" Visibility="Collapsed" Grid.Row="0" Grid.RowSpan="2"
-              Background="#80000000">
-            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
-                <StackPanel Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Background="#13131A" Padding="20" CornerRadius="8">
-                    <ProgressRing IsActive="True" Width="48" Height="48"/>
-                    <TextBlock Text="Gemini is analyzing the issue..."
-                               Foreground="#6B7280" FontSize="13" HorizontalAlignment="Center"/>
-                </StackPanel>
-            </Grid>
-        </Grid>
-
-
-        <!-- Main Content: Kanban + Detail Panel -->
         <!-- Main Content: Kanban + Detail Panel -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -599,6 +584,19 @@
                     </Border>
                 </Grid>
             </Border>
+        </Grid>
+
+        <!-- Busy / Loading Overlay (used instead of a ContentDialog to avoid modal issues) -->
+        <Grid x:Name="BusyOverlay" Visibility="Collapsed" Grid.Row="0" Grid.RowSpan="2"
+              Background="#80000000">
+            <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Spacing="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Background="#13131A" Padding="20" CornerRadius="8">
+                    <ProgressRing IsActive="True" Width="48" Height="48"/>
+                    <TextBlock Text="Gemini is analyzing the issue..."
+                               Foreground="#6B7280" FontSize="13" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
         </Grid>
 
         <!-- Media Lightbox Overlay -->
