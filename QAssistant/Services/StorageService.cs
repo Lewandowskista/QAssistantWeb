@@ -2,10 +2,13 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using QAssistant.Models;
+using Windows.Security.Cryptography;
+using Windows.Security.Cryptography.DataProtection;
 
 namespace QAssistant.Services
 {
@@ -35,6 +38,7 @@ namespace QAssistant.Services
         private readonly string _dataPath;
         private readonly string _logPath;
         private readonly AppJsonContext _jsonContext;
+        private const string EncryptedPrefix = "ENC1:";
 
         public StorageService()
         {
@@ -105,20 +109,36 @@ namespace QAssistant.Services
                     return new List<Project>();
 
                 var fileContent = await File.ReadAllTextAsync(_dataPath);
+                var normalizedJson = fileContent;
+
+                if (fileContent.StartsWith(EncryptedPrefix, StringComparison.Ordinal))
+                {
+                    var payload = fileContent[EncryptedPrefix.Length..];
+                    var encryptedBytes = Convert.FromBase64String(payload);
+                    var protectedBuffer = CryptographicBuffer.CreateFromByteArray(encryptedBytes);
+                    var provider = new DataProtectionProvider();
+                    var decryptedBuffer = await provider.UnprotectAsync(protectedBuffer);
+                    CryptographicBuffer.CopyToByteArray(decryptedBuffer, out var decryptedBytes);
+                    normalizedJson = Encoding.UTF8.GetString(decryptedBytes);
+                }
 
                 List<Project>? result = null;
                 try
                 {
-                    result = JsonSerializer.Deserialize<List<Project>>(fileContent, _jsonContext.ListProject);
+                    result = JsonSerializer.Deserialize<List<Project>>(normalizedJson, _jsonContext.ListProject);
                 }
                 catch (Exception deserializeEx)
                 {
                     LogMessage($"JsonSerializerContext deserialization failed: {deserializeEx.Message}. Trying default deserializer...");
                     var options = new JsonSerializerOptions { WriteIndented = true, PropertyNameCaseInsensitive = true };
-                    result = JsonSerializer.Deserialize<List<Project>>(fileContent, options);
+                    result = JsonSerializer.Deserialize<List<Project>>(normalizedJson, options);
                 }
 
                 result ??= new List<Project>();
+
+                if (!fileContent.StartsWith(EncryptedPrefix, StringComparison.Ordinal))
+                    await SaveProjectsAsync(result);
+
                 return result;
             }
             catch (Exception ex)
@@ -151,7 +171,14 @@ namespace QAssistant.Services
                     jsonContent = JsonSerializer.Serialize(projects, options);
                 }
 
-                await File.WriteAllTextAsync(_dataPath, jsonContent);
+                var plainBytes = Encoding.UTF8.GetBytes(jsonContent);
+                var plainBuffer = CryptographicBuffer.CreateFromByteArray(plainBytes);
+                var provider = new DataProtectionProvider("LOCAL=user");
+                var encryptedBuffer = await provider.ProtectAsync(plainBuffer);
+                CryptographicBuffer.CopyToByteArray(encryptedBuffer, out var encryptedBytes);
+                var encryptedPayload = EncryptedPrefix + Convert.ToBase64String(encryptedBytes);
+
+                await File.WriteAllTextAsync(_dataPath, encryptedPayload);
             }
             catch (Exception ex)
             {

@@ -77,11 +77,12 @@ namespace QAssistant.Services
             _apiKey = apiKey;
             _client.DefaultRequestHeaders.Accept
                 .Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            _client.DefaultRequestHeaders.Add("x-goog-api-key", _apiKey);
         }
 
         public async Task<List<(string, string[])>> ListModelsAsync()
         {
-            var url = $"{BaseUrl}/models?key={_apiKey}";
+            var url = $"{BaseUrl}/models";
             var resp = await _client.GetAsync(url);
             var json = await resp.Content.ReadAsStringAsync();
 
@@ -146,7 +147,7 @@ namespace QAssistant.Services
                 modelName = await FindModelSupportingGenerateContentAsync();
                 if (string.IsNullOrEmpty(modelName))
                 {
-                    var modelsJson = await _client.GetStringAsync($"{BaseUrl}/models?key={_apiKey}");
+                    var modelsJson = await _client.GetStringAsync($"{BaseUrl}/models");
                     throw new Exception("No model supporting a generate-like method found. Call ListModelsAsync to inspect available models. Response: " + modelsJson);
                 }
             }
@@ -208,7 +209,7 @@ namespace QAssistant.Services
             var modelPath = NormalizeModelPath(modelName);
 
             var endpoint = $"{BaseUrl}/{modelPath}:generateContent";
-            var url = $"{endpoint}?key={_apiKey}";
+            var url = endpoint;
 
             // Build JSON manually to avoid reflection-based serialization issues with trimming
             // Escape the prompt string properly for JSON

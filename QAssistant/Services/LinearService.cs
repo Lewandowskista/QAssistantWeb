@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using QAssistant.Models;
@@ -70,7 +71,7 @@ namespace QAssistant.Services
                     throw new Exception(errors[0].GetProperty("message").GetString());
 
                 if (!root.TryGetProperty("data", out var data))
-                    throw new Exception($"Unexpected response: {response}");
+                    throw new Exception("Unexpected response from Linear API.");
 
                 var nodes = data.GetProperty("issues").GetProperty("nodes");
 
@@ -144,7 +145,7 @@ namespace QAssistant.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Parse error: {ex.Message} | Raw: {response}");
+                throw new Exception($"Parse error while reading Linear issues response: {ex.Message}");
             }
 
             return tasks;
@@ -165,10 +166,10 @@ namespace QAssistant.Services
                     throw new Exception(errors[0].GetProperty("message").GetString());
 
                 if (!root.TryGetProperty("data", out var data))
-                    throw new Exception($"Unexpected response: {response}");
+                    throw new Exception("Unexpected response from Linear API.");
 
                 if (!data.TryGetProperty("teams", out var teamsEl))
-                    throw new Exception($"No teams in response: {response}");
+                    throw new Exception("No teams found in Linear API response.");
 
                 var nodes = teamsEl.GetProperty("nodes");
                 foreach (var node in nodes.EnumerateArray())
@@ -182,7 +183,7 @@ namespace QAssistant.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Parse error: {ex.Message} | Raw: {response}");
+                throw new Exception($"Parse error while reading Linear teams response: {ex.Message}");
             }
 
             return teams;
@@ -190,13 +191,17 @@ namespace QAssistant.Services
 
         public async Task UpdateIssueStatusAsync(string issueId, string stateId)
         {
-            var mutation = $@"
-            mutation {{
-                issueUpdate(id: ""{issueId}"", input: {{ stateId: ""{stateId}"" }}) {{
+            var mutation = @"
+            mutation($issueId: String!, $stateId: String!) {
+                issueUpdate(id: $issueId, input: { stateId: $stateId }) {
                     success
-                }}
-            }}";
-            var response = await PostQueryAsync(mutation);
+                }
+            }";
+            var response = await PostQueryAsync(mutation, new JsonObject
+            {
+                ["issueId"] = issueId,
+                ["stateId"] = stateId
+            });
 
             using var doc = JsonDocument.Parse(response);
             var root = doc.RootElement;
@@ -218,20 +223,23 @@ namespace QAssistant.Services
 
         public async Task<List<LinearComment>> GetCommentsAsync(string issueId)
         {
-            var query = $@"
-    {{
-        issue(id: ""{issueId}"") {{
-            comments {{
-                nodes {{
+            var query = @"
+    query($issueId: String!) {
+        issue(id: $issueId) {
+            comments {
+                nodes {
                     body
                     createdAt
-                    user {{ name }}
-                }}
-            }}
-        }}
-    }}";
+                    user { name }
+                }
+            }
+        }
+    }";
 
-            var response = await PostQueryAsync(query);
+            var response = await PostQueryAsync(query, new JsonObject
+            {
+                ["issueId"] = issueId
+            });
             var comments = new List<LinearComment>();
 
             try
@@ -270,18 +278,26 @@ namespace QAssistant.Services
 
         public async Task AddCommentAsync(string issueId, string body)
         {
-            var mutation = $@"
-            mutation {{
-                commentCreate(input: {{ issueId: ""{issueId}"", body: ""{body}"" }}) {{
+            var mutation = @"
+            mutation($issueId: String!, $body: String!) {
+                commentCreate(input: { issueId: $issueId, body: $body }) {
                     success
-                }}
-            }}";
-            await PostQueryAsync(mutation);
+                }
+            }";
+            await PostQueryAsync(mutation, new JsonObject
+            {
+                ["issueId"] = issueId,
+                ["body"] = body
+            });
         }
 
-        private async Task<string> PostQueryAsync(string query)
+        private async Task<string> PostQueryAsync(string query, JsonObject? variables = null)
         {
-            var payload = new System.Text.Json.Nodes.JsonObject { ["query"] = query }.ToJsonString();
+            var payloadObject = new JsonObject { ["query"] = query };
+            if (variables != null)
+                payloadObject["variables"] = variables;
+
+            var payload = payloadObject.ToJsonString();
 
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
             var response = await _client.PostAsync(Endpoint, content);

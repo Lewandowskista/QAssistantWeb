@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/25545093/README.md)
 # QAssistant
 
 > A floating desktop companion for QA engineers — built with WinUI 3 and .NET 10
@@ -13,6 +12,16 @@
 ## What is QAssistant?
 
 QAssistant is an always-on-top floating desktop widget designed for QA engineers who juggle multiple projects, tools, and tasks at once. It keeps everything you need — your Linear issues, notes, links, files, and Kanban board — in one lightweight, pinnable window that stays out of your way until you need it.
+
+---
+
+## Latest Updates
+
+- Improved Gemini integration with automatic model discovery for content generation
+- Automatic fallback to an alternate Gemini model when rate limits are hit
+- Smarter rate-limit and quota detection with clearer retry behavior
+- TOON-based (token-optimized) prompt generation for richer issue analysis at lower token cost
+- Screenshot-aware AI analysis support when images are attached to a task
 
 ---
 
@@ -47,6 +56,9 @@ QAssistant is an always-on-top floating desktop widget designed for QA engineers
 
 ### 🤖 AI-Powered Issue Analysis
 - Analyze any task or Linear issue using Google Gemini AI
+- Token-optimized TOON prompt format for more efficient and consistent analysis output
+- Multimodal support: attached screenshots can be analyzed for errors, UI state, and logs
+- Automatic model selection with fallback if a model is temporarily rate-limited
 - Get AI-generated insights including:
   - Root Cause Analysis
   - Impact Assessment
@@ -133,10 +145,6 @@ dotnet restore
 dotnet build -c Release
 
 # Or open in Visual Studio
-start QAssistant.sln
-git clone https://github.com/yourusername/QAssistant.git
-
-# Open in Visual Studio
 start QAssistant.sln
 ```
 
